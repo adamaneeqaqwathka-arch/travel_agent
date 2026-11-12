@@ -48,49 +48,91 @@ def search_flights(source: str, destination: str, sort_by: str = "price") -> lis
     return sorted(matches, key=key)
 
 
-def find_flight_options(source: str, destination: str) -> dict:
-    """Find direct flights, or one-stop connections if none exist.
 
-    Dates are ignored when pairing legs: the dataset's flights are treated
-    as representative schedules for each route, and the cheapest flight on
-    each leg is used.
+def find_flight_options(
+    source: str,
+    destination: str,
+    sort_by: str = "price"
+) -> dict:
+    """Find direct or one-stop flights, sorted by price or duration."""
 
-    Returns one of three shapes:
-        {"type": "direct",   "options": [flight, ...]}
-        {"type": "one_stop", "options": [{"via", "legs", "total_price"}, ...]}
-        {"type": "none",     "message": "..."}
-    """
-    direct = search_flights(source, destination)
+    if sort_by not in VALID_SORTS:
+        raise ValueError(f"Invalid sort option: {sort_by}")
+
+    # Step 1: Check direct flights
+    direct = search_flights(source, destination, sort_by)
+
     if direct:
         return {"type": "direct", "options": direct}
 
+    # Step 2: Find possible stopover cities
     flights = load_flights()
-    all_cities = {f["from"] for f in flights} | {f["to"] for f in flights}
+
+    all_cities = {f["from"] for f in flights} | {
+        f["to"] for f in flights
+    }
+
     stopovers = [
         city for city in all_cities
         if city.lower() not in (source.lower(), destination.lower())
     ]
 
     connections = []
+
     for city in stopovers:
         first_legs = search_flights(source, city)
         second_legs = search_flights(city, destination)
+
         if first_legs and second_legs:
-            leg1, leg2 = first_legs[0], second_legs[0]  # cheapest of each
+
+            # Cheapest flight on each leg
+            leg1 = first_legs[0]
+            leg2 = second_legs[0]
+
+            # Step 3: Validate layover
+            departure_leg2 = datetime.fromisoformat(
+                leg2["departure_time"]
+            )
+
+            arrival_leg1 = datetime.fromisoformat(
+                leg1["arrival_time"]
+            )
+
+            if departure_leg2 <= arrival_leg1:
+                continue
+
+            # Step 4: Calculate total duration
+            total_duration = (
+                get_duration(leg1) + get_duration(leg2)
+            )
+
             connections.append({
                 "via": city,
                 "legs": [leg1, leg2],
                 "total_price": leg1["price"] + leg2["price"],
+                "total_duration": total_duration
             })
 
+    # Step 5: Sort connections
     if connections:
-        connections.sort(key=lambda c: c["total_price"])
-        return {"type": "one_stop", "options": connections}
+        if sort_by == "price":
+            connections.sort(key=lambda c: c["total_price"])
+        else:
+            connections.sort(key=lambda c: c["total_duration"])
+
+        return {
+            "type": "one_stop",
+            "options": connections
+        }
 
     return {
         "type": "none",
-        "message": f"No direct or one-stop route from {source} to {destination}",
+        "message": (
+            f"No direct or valid one-stop route "
+            f"from {source} to {destination}"
+        )
     }
+
 
 
 if __name__ == "__main__":
