@@ -9,7 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from agent.prompts import build_system_prompt
 from agent.tool_wrappers import ALL_TOOLS
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.8-flash"
 
 
 def build_agent():
