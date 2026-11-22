@@ -1,8 +1,11 @@
-
-# Secrets
+# Secrets and API keys (never commit these)
 .env
 .env.*
 !.env.example
+*.key
+*.pem
+secrets.toml
+.streamlit/secrets.toml
 
 # Python
 __pycache__/
@@ -20,15 +23,9 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
-# Streamlit
-.streamlit/secrets.toml
-
 # Logs and outputs
 *.log
 outputs/
-
-# Generated data
-data/processed/
 
 # IDE / OS
 .vscode/
